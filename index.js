@@ -4,6 +4,9 @@ const inputUrl = document.getElementById('url');
 const ytRegex = /youtu(?:be\..+?|.be)\/(?:watch.*?v=|embed\/|shorts\/|)([A-Za-z0-9_-]+).*?((?<=(?:\?|&)t=))*(\d+)*/;
 const twitchRegex = /twitch\.tv\/videos\/(\d+)(?:\?t=)?(.+)?/;
 const driveRegex = /drive\.google\.com\/file\/d\/(.*)\//;
+const biliBvRegex = /bilibili\.com\/video\/(BV[1-9A-HJ-NP-Za-km-z]{10})/i;
+const biliAvRegex = /bilibili\.com\/video\/av(\d+)/i;
+const biliShortRegex = /(?:b23\.tv|bili2233\.cn)\/([A-Za-z0-9]+)/i;
 
 inputUrl.focus();
 
@@ -55,11 +58,71 @@ function redirectDrive(url) {
 	if (id) window.location.href = `new_run.html?id=${id}&type=d`;
 }
 
+function withProtocol(rawUrl) {
+	const trimmed = rawUrl.trim();
+	if (!trimmed) return trimmed;
+	if (/^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(trimmed)) return trimmed;
+	return `https://${trimmed}`;
+}
+
+function parseBilibiliTime(rawUrl) {
+	try {
+		const parsed = new URL(withProtocol(rawUrl));
+		const t = parsed.searchParams.get('t');
+		if (!t) return '';
+		if (/^\d+(?:\.\d+)?$/.test(t)) return t;
+		const hours = Number((t.match(/(\d+)h/) || [])[1] || 0);
+		const minutes = Number((t.match(/(\d+)m/) || [])[1] || 0);
+		const seconds = Number((t.match(/(\d+)s/) || [])[1] || 0);
+		const total = hours * 3600 + minutes * 60 + seconds;
+		return total ? String(total) : '';
+	} catch {
+		return '';
+	}
+}
+
+function parseBilibiliPage(rawUrl) {
+	try {
+		return new URL(withProtocol(rawUrl)).searchParams.get('p') || '1';
+	} catch {
+		return '1';
+	}
+}
+
+function parseBilibili(rawUrl) {
+	const short = rawUrl.match(biliShortRegex);
+	if (short) return { short: short[1], p: parseBilibiliPage(rawUrl), t: parseBilibiliTime(rawUrl) };
+	const bv = rawUrl.match(biliBvRegex);
+	if (bv) return { bvid: bv[1], p: parseBilibiliPage(rawUrl), t: parseBilibiliTime(rawUrl) };
+	const av = rawUrl.match(biliAvRegex);
+	if (av) return { aid: av[1], p: parseBilibiliPage(rawUrl), t: parseBilibiliTime(rawUrl) };
+	return null;
+}
+
+function redirectBilibili(url) {
+	const parsed = parseBilibili(url);
+	if (!parsed) return;
+	const params = new URLSearchParams({ type: 'b' });
+	if (parsed.bvid) params.set('id', parsed.bvid);
+	if (parsed.aid) {
+		params.set('id', parsed.aid);
+		params.set('aid', '1');
+	}
+	if (parsed.short) {
+		params.set('id', parsed.short);
+		params.set('short', '1');
+	}
+	if (parsed.p && parsed.p !== '1') params.set('p', parsed.p);
+	if (parsed.t) params.set('t', parsed.t);
+	window.location.href = `new_run.html?${params}`;
+}
+
 function redirect() {
 	const url = inputUrl.value;
 	redirectYoutube(url);
 	redirectTwitch(url);
 	redirectDrive(url);
+	redirectBilibili(url);
 }
 
 if ('serviceWorker' in navigator) {

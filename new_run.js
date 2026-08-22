@@ -36,7 +36,7 @@ if (type === 'y') {
 	tag.src = 'https://www.youtube.com/iframe_api';
 	const firstScriptTag = document.getElementsByTagName('script')[0];
 	firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
-} else if (type === 't') {
+} else if (type === 't' || type === 'b') {
 	videoIframe.hidden = true;
 }
 
@@ -445,6 +445,79 @@ switch (type) {
 				videoPlayer.play();
 			},
 		};
+		break;
+	}
+	case 'b':
+	{
+		const videoPlayer = document.getElementById('video');
+		const page = searchParams.get('p') || '1';
+		const streamParams = new URLSearchParams({ p: page });
+		if (searchParams.get('short') === '1') streamParams.set('short', videoId);
+		else if (searchParams.get('aid') === '1') streamParams.set('aid', videoId);
+		else streamParams.set('bvid', videoId);
+
+		function bindHtml5Player() {
+			player = {
+				seekTo(timestamp) {
+					videoPlayer.currentTime = timestamp;
+				},
+				pauseVideo() {
+					videoPlayer.pause();
+				},
+				getCurrentTime() {
+					return videoPlayer.currentTime;
+				},
+				playVideo() {
+					videoPlayer.play();
+				},
+			};
+		}
+
+		function loadLocalBilibiliFile() {
+			const input = document.createElement('input');
+			input.type = 'file';
+			input.accept = 'video/*';
+			input.onchange = () => {
+				const file = input.files?.[0];
+				if (!file) return;
+				videoPlayer.src = URL.createObjectURL(file);
+				videoPlayer.load();
+				getLocalVideoFps(videoPlayer);
+			};
+			input.click();
+		}
+
+		function showBilibiliError(message) {
+			const useLocal = window.confirm(`${message}\n\nLoad a local video file instead?`);
+			if (useLocal) loadLocalBilibiliFile();
+		}
+
+		videoIframe.remove();
+		videoPlayer.style.display = 'block';
+		bindHtml5Player();
+		videoPlayer.addEventListener('loadedmetadata', onPlayerReady, { once: true });
+		videoPlayer.addEventListener('error', () => {
+			showBilibiliError('Could not play this Bilibili video through the retimer server.');
+		});
+
+		(async () => {
+			try {
+				const infoRes = await fetch(`/api/bilibili/info?${streamParams}`);
+				if (!infoRes.ok) {
+					const body = await infoRes.json().catch(() => ({}));
+					throw new Error(body.error || `Server error ${infoRes.status}`);
+				}
+				videoPlayer.src = `/api/bilibili/stream?${streamParams}`;
+				videoPlayer.load();
+				getLocalVideoFps(videoPlayer);
+			} catch (err) {
+				if (err instanceof TypeError) {
+					showBilibiliError('Bilibili videos need the retimer server. Run npm start and open http://localhost:3000');
+					return;
+				}
+				showBilibiliError(err.message);
+			}
+		})();
 		break;
 	}
 	default:
