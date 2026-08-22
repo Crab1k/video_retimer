@@ -327,6 +327,7 @@ switch (type) {
 		fpsInfoButton.style.display = 'inline';
 		vidInfoButton.style.display = 'inline';
 		const youtubeOrigin = window.location.origin;
+		videoIframe.src = `https://www.youtube.com/embed/${encodeURIComponent(videoId)}?enablejsapi=1&origin=${encodeURIComponent(youtubeOrigin)}`;
 
 		function onYoutubeError(event) {
 			console.log(event);
@@ -351,17 +352,9 @@ switch (type) {
 			onPlayerReady();
 		}
 		function createYoutubePlayer() {
-			if (youtube) return;
+			if (youtube || !(window.YT && window.YT.Player)) return;
 			// eslint-disable-next-line no-undef
-			youtube = new YT.Player(videoIframe, {
-				videoId,
-				playerVars: {
-					rel: 0,
-					origin: youtubeOrigin,
-					enablejsapi: 1,
-					playsinline: 1,
-					widget_referrer: window.location.href,
-				},
+			youtube = new YT.Player('video-iframe', {
 				events: {
 					onReady: onYoutubeReady,
 					onError: onYoutubeError,
