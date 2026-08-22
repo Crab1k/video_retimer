@@ -534,6 +534,8 @@ switch (type) {
 		const videoPlayer = document.getElementById('video');
 		const qualityWrap = document.getElementById('bili-quality-wrap');
 		const qualitySelect = document.getElementById('bili-quality');
+		const volumeWrap = document.getElementById('bili-volume-wrap');
+		const volumeSlider = document.getElementById('bili-volume');
 		const page = searchParams.get('p') || '1';
 		const streamParams = new URLSearchParams({ p: page });
 		if (searchParams.get('short') === '1') streamParams.set('short', videoId);
@@ -543,6 +545,25 @@ switch (type) {
 		const audioPlayer = new Audio();
 		audioPlayer.preload = 'auto';
 		let qualitiesMeta = [];
+		let applyingBiliVolume = false;
+
+		function biliVolumeValue() {
+			const stored = Number.parseFloat(localStorage.getItem('biliVolume'));
+			if (Number.isFinite(stored)) return Math.min(1, Math.max(0, stored));
+			return 1;
+		}
+
+		function applyBiliVolume(value) {
+			const volume = Number.isFinite(value) ? Math.min(1, Math.max(0, value)) : biliVolumeValue();
+			applyingBiliVolume = true;
+			videoPlayer.volume = volume;
+			videoPlayer.muted = volume === 0;
+			audioPlayer.volume = volume;
+			audioPlayer.muted = volume === 0;
+			if (volumeSlider) volumeSlider.value = String(Math.round(volume * 100));
+			localStorage.setItem('biliVolume', String(volume));
+			applyingBiliVolume = false;
+		}
 
 		function qualityHasAudio(qn) {
 			return !!qualitiesMeta.find((item) => String(item.qn) === String(qn))?.separateAudio;
@@ -602,6 +623,7 @@ switch (type) {
 				audioPlayer.removeAttribute('src');
 				audioPlayer.load();
 			}
+			applyBiliVolume();
 			getLocalVideoFps(videoPlayer);
 		}
 
@@ -638,6 +660,13 @@ switch (type) {
 
 		videoIframe.remove();
 		videoPlayer.style.display = 'block';
+		volumeWrap.style.display = 'inline';
+		applyBiliVolume();
+		volumeSlider.oninput = () => applyBiliVolume(Number(volumeSlider.value) / 100);
+		videoPlayer.addEventListener('volumechange', () => {
+			if (applyingBiliVolume) return;
+			applyBiliVolume(videoPlayer.muted ? 0 : videoPlayer.volume);
+		});
 		bindHtml5Player();
 		videoPlayer.addEventListener('loadedmetadata', onPlayerReady, { once: true });
 		videoPlayer.addEventListener('play', () => {
