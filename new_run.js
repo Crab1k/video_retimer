@@ -135,8 +135,14 @@ function validateFramerate(isFromUser) {
 }
 
 function updateCurrentTime() {
-	currentMillis = Math.floor(player.getCurrentTime() * 1000);
-	currentFrame = Math.floor(player.getCurrentTime() * framerate);
+	try {
+		const seconds = player.getCurrentTime();
+		currentMillis = Math.floor((seconds || 0) * 1000);
+		currentFrame = Math.floor((seconds || 0) * framerate);
+	} catch {
+		currentMillis = 0;
+		currentFrame = 0;
+	}
 }
 
 function updateCurrentTimeSpan() {
@@ -321,7 +327,6 @@ switch (type) {
 		fpsInfoButton.style.display = 'inline';
 		vidInfoButton.style.display = 'inline';
 		const youtubeOrigin = window.location.origin;
-		videoIframe.src = `https://www.youtube.com/embed/${encodeURIComponent(videoId)}?enablejsapi=1&origin=${encodeURIComponent(youtubeOrigin)}`;
 
 		function onYoutubeError(event) {
 			console.log(event);
@@ -331,13 +336,13 @@ switch (type) {
 		function onYoutubeReady() {
 			player = {
 				seekTo(timestamp) {
-					youtube.seekTo(timestamp);
+					youtube.seekTo(timestamp, true);
 				},
 				pauseVideo() {
 					youtube.pauseVideo();
 				},
 				getCurrentTime() {
-					return youtube.getCurrentTime();
+					return youtube.getCurrentTime() || 0;
 				},
 				playVideo() {
 					youtube.playVideo();
@@ -346,11 +351,16 @@ switch (type) {
 			onPlayerReady();
 		}
 		function createYoutubePlayer() {
+			if (youtube) return;
 			// eslint-disable-next-line no-undef
-			youtube = new YT.Player('video-iframe', {
+			youtube = new YT.Player(videoIframe, {
+				videoId,
 				playerVars: {
 					rel: 0,
 					origin: youtubeOrigin,
+					enablejsapi: 1,
+					playsinline: 1,
+					widget_referrer: window.location.href,
 				},
 				events: {
 					onReady: onYoutubeReady,
@@ -358,11 +368,15 @@ switch (type) {
 				},
 			});
 		}
-		window.onYouTubeIframeAPIReady = createYoutubePlayer;
-		window.onYouTubePlayerAPIReady = createYoutubePlayer;
-		const tag = document.createElement('script');
-		tag.src = 'https://www.youtube.com/iframe_api';
-		document.head.appendChild(tag);
+		if (window.YT && window.YT.Player) {
+			createYoutubePlayer();
+		} else {
+			window.onYouTubeIframeAPIReady = createYoutubePlayer;
+			window.onYouTubePlayerAPIReady = createYoutubePlayer;
+			const tag = document.createElement('script');
+			tag.src = 'https://www.youtube.com/iframe_api';
+			document.head.appendChild(tag);
+		}
 		break;
 	}
 	case 't':
