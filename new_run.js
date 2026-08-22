@@ -474,23 +474,8 @@ switch (type) {
 			};
 		}
 
-		function loadLocalBilibiliFile() {
-			const input = document.createElement('input');
-			input.type = 'file';
-			input.accept = 'video/*';
-			input.onchange = () => {
-				const file = input.files?.[0];
-				if (!file) return;
-				videoPlayer.src = URL.createObjectURL(file);
-				videoPlayer.load();
-				getLocalVideoFps(videoPlayer);
-			};
-			input.click();
-		}
-
 		function showBilibiliError(message) {
-			const useLocal = window.confirm(`${message}\n\nLoad a local video file instead?`);
-			if (useLocal) loadLocalBilibiliFile();
+			alert(message);
 		}
 
 		videoIframe.remove();
