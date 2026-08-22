@@ -482,7 +482,18 @@ switch (type) {
 			alert(message);
 		}
 
-		function loadBilibiliStream() {
+		let ignoreNextMediaError = false;
+		let streamReloads = 0;
+
+		function loadBilibiliStream(resumeAt) {
+			const resume = Number.isFinite(resumeAt) ? resumeAt : videoPlayer.currentTime || 0;
+			ignoreNextMediaError = true;
+			const restore = () => {
+				if (resume > 0.25) videoPlayer.currentTime = resume;
+				ignoreNextMediaError = false;
+				videoPlayer.removeEventListener('loadedmetadata', restore);
+			};
+			videoPlayer.addEventListener('loadedmetadata', restore);
 			videoPlayer.src = `/api/bilibili/stream?${streamParams}`;
 			videoPlayer.load();
 			getLocalVideoFps(videoPlayer);
@@ -512,20 +523,26 @@ switch (type) {
 		qualitySelect.onchange = () => {
 			streamParams.set('qn', qualitySelect.value);
 			localStorage.setItem('biliQn', qualitySelect.value);
-			const resumeAt = videoPlayer.currentTime || 0;
-			const restore = () => {
-				videoPlayer.currentTime = resumeAt;
-				videoPlayer.removeEventListener('loadedmetadata', restore);
-			};
-			videoPlayer.addEventListener('loadedmetadata', restore);
-			loadBilibiliStream();
+			streamReloads = 0;
+			loadBilibiliStream(videoPlayer.currentTime || 0);
 		};
 
 		videoIframe.remove();
 		videoPlayer.style.display = 'block';
 		bindHtml5Player();
 		videoPlayer.addEventListener('loadedmetadata', onPlayerReady, { once: true });
+		videoPlayer.addEventListener('playing', () => {
+			streamReloads = 0;
+			ignoreNextMediaError = false;
+		});
 		videoPlayer.addEventListener('error', () => {
+			const code = videoPlayer.error?.code;
+			if (ignoreNextMediaError || code === MediaError.MEDIA_ERR_ABORTED) return;
+			if (streamReloads < 2 && (code === MediaError.MEDIA_ERR_NETWORK || code === MediaError.MEDIA_ERR_SRC_NOT_SUPPORTED)) {
+				streamReloads++;
+				loadBilibiliStream(videoPlayer.currentTime || 0);
+				return;
+			}
 			showBilibiliError('Could not play this Bilibili video through the retimer server.');
 		});
 

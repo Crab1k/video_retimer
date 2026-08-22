@@ -262,16 +262,40 @@ async function resolveVideo({ bvid, aid, shortId, p }) {
 	};
 }
 
-async function resolvePlayable(query) {
+const playCache = new Map();
+const PLAY_TTL_MS = 8 * 60 * 1000;
+
+function playCacheKey(query) {
+	return [
+		query.bvid || '',
+		query.aid || '',
+		query.shortId || '',
+		parsePage(query.p),
+		parseQn(query.qn),
+	].join(':');
+}
+
+async function resolvePlayable(query, { refresh = false } = {}) {
+	const key = playCacheKey(query);
+	if (!refresh) {
+		const hit = playCache.get(key);
+		if (hit && Date.now() - hit.at < PLAY_TTL_MS) return hit.value;
+	}
 	const info = await resolveVideo(query);
 	const play = await requestPlayUrl(info, query.qn);
-	return {
+	const value = {
 		...info,
 		playUrl: play.url,
 		quality: play.quality,
 		qualities: play.qualities,
 		fps: play.fps,
 	};
+	playCache.set(key, { at: Date.now(), value });
+	return value;
+}
+
+function invalidatePlayable(query) {
+	playCache.delete(playCacheKey(query));
 }
 
 module.exports = {
@@ -280,5 +304,6 @@ module.exports = {
 	parseBilibiliUrl,
 	resolveVideo,
 	resolvePlayable,
+	invalidatePlayable,
 	UA,
 };

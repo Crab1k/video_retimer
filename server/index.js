@@ -2,7 +2,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { Readable } = require('node:stream');
 const express = require('express');
-const { biliHeaders, resolvePlayable, resolveVideo } = require('./bilibili');
+const { biliHeaders, resolvePlayable, invalidatePlayable } = require('./bilibili');
 
 const app = express();
 const root = path.resolve(__dirname, '..');
@@ -58,15 +58,24 @@ app.get('/api/bilibili/info', async (req, res) => {
 	}
 });
 
+async function fetchBilibiliCdn(playable, rangeHeader) {
+	const headers = biliHeaders({
+		Referer: `https://www.bilibili.com/video/${playable.bvid}`,
+	});
+	if (rangeHeader) headers.Range = rangeHeader;
+	return fetch(playable.playUrl, { headers });
+}
+
 async function proxyBilibili(req, res) {
 	try {
-		const playable = await resolvePlayable(queryFromRequest(req));
-		const headers = biliHeaders({
-			Referer: `https://www.bilibili.com/video/${playable.bvid}`,
-		});
-		if (req.headers.range) headers.Range = req.headers.range;
-
-		const upstream = await fetch(playable.playUrl, { headers });
+		const query = queryFromRequest(req);
+		let playable = await resolvePlayable(query);
+		let upstream = await fetchBilibiliCdn(playable, req.headers.range);
+		if (upstream.status === 403 || upstream.status === 404) {
+			invalidatePlayable(query);
+			playable = await resolvePlayable(query, { refresh: true });
+			upstream = await fetchBilibiliCdn(playable, req.headers.range);
+		}
 		if (!upstream.ok && upstream.status !== 206) {
 			res.status(502).json({ error: 'Bilibili CDN refused the video stream' });
 			return;
@@ -78,7 +87,7 @@ async function proxyBilibili(req, res) {
 			if (value) res.setHeader(name, value);
 		});
 		if (!res.getHeader('accept-ranges')) res.setHeader('accept-ranges', 'bytes');
-		res.setHeader('cache-control', 'no-store');
+		res.setHeader('cache-control', 'private, max-age=120');
 
 		if (!upstream.body) {
 			res.end();
