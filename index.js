@@ -99,6 +99,46 @@ function parseBilibili(rawUrl) {
 	return null;
 }
 
+function parseNiconicoTime(rawUrl) {
+	try {
+		const parsed = new URL(withProtocol(rawUrl));
+		const from = parsed.searchParams.get('from') || parsed.searchParams.get('t');
+		if (!from) return '';
+		if (/^\d+(?:\.\d+)?$/.test(from)) return from;
+		const hours = Number((from.match(/(\d+)h/) || [])[1] || 0);
+		const minutes = Number((from.match(/(\d+)m/) || [])[1] || 0);
+		const seconds = Number((from.match(/(\d+)s/) || [])[1] || 0);
+		const total = hours * 3600 + minutes * 60 + seconds;
+		return total ? String(total) : '';
+	} catch {
+		return '';
+	}
+}
+
+function parseNiconico(rawUrl) {
+	let parsed;
+	try {
+		parsed = new URL(withProtocol(rawUrl));
+	} catch {
+		return null;
+	}
+	const host = parsed.hostname.replace(/^(www|sp|embed)\./, '');
+	if (host !== 'nicovideo.jp' && host !== 'nico.ms') return null;
+	const match = host === 'nico.ms'
+		? parsed.pathname.match(/^\/((?:sm|nm|so|nc)\d+)/i)
+		: parsed.pathname.match(/\/watch\/((?:sm|nm|so|nc)\d+)/i);
+	if (!match) return null;
+	return { id: match[1], t: parseNiconicoTime(rawUrl) };
+}
+
+function redirectNiconico(url) {
+	const parsed = parseNiconico(url);
+	if (!parsed) return;
+	const params = new URLSearchParams({ type: 'n', id: parsed.id });
+	if (parsed.t) params.set('t', parsed.t);
+	window.location.href = `/new_run.html?${params}`;
+}
+
 function redirectBilibili(url) {
 	const parsed = parseBilibili(url);
 	if (!parsed) return;
@@ -123,6 +163,7 @@ function redirect() {
 	redirectTwitch(url);
 	redirectDrive(url);
 	redirectBilibili(url);
+	redirectNiconico(url);
 }
 
 if ('serviceWorker' in navigator) {

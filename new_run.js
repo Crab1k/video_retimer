@@ -403,6 +403,85 @@ switch (type) {
 		twitch.addEventListener(Twitch.Player.PLAYING, onPlayerPlaying);
 		break;
 	}
+	case 'n':
+	{
+		const nicoPlayerId = 'retimer';
+		const nicoOrigin = 'https://embed.nicovideo.jp';
+		let nicoCurrentMs = 0;
+		let nicoTimeScale = 1000;
+		let nicoLengthSeconds = 0;
+		let nicoReady = false;
+		let nicoFailed = false;
+
+		function nicoPost(eventName, data) {
+			if (!videoIframe.contentWindow) return;
+			const message = {
+				eventName,
+				sourceConnectorType: 1,
+				playerId: nicoPlayerId,
+			};
+			if (data !== undefined) message.data = data;
+			videoIframe.contentWindow.postMessage(message, nicoOrigin);
+		}
+
+		function markNicoReady() {
+			if (nicoReady || nicoFailed) return;
+			nicoReady = true;
+			onPlayerReady();
+		}
+
+		player = {
+			seekTo(timestamp) {
+				nicoPost('seek', { time: timestamp * nicoTimeScale });
+			},
+			pauseVideo() {
+				nicoPost('pause');
+			},
+			getCurrentTime() {
+				return nicoCurrentMs / 1000;
+			},
+			playVideo() {
+				nicoPost('play');
+			},
+		};
+
+		window.addEventListener('message', (event) => {
+			if (event.origin !== nicoOrigin) return;
+			const payload = event.data || {};
+			if (payload.playerId && payload.playerId !== nicoPlayerId) return;
+			const eventName = payload.eventName;
+			const data = payload.data || {};
+
+			if (eventName === 'error' || payload.code === 'possibly_deleted_video' || payload.code === 'externally_unwatchable') {
+				if (nicoFailed) return;
+				nicoFailed = true;
+				alert(payload.message || data.message || 'This Niconico video cannot be embedded.');
+				return;
+			}
+
+			if (eventName === 'loadComplete') {
+				const length = Number(data.videoInfo?.lengthInSeconds);
+				if (length > 0) nicoLengthSeconds = length;
+				nicoPost('commentVisibilityChange', { commentVisibility: false });
+				markNicoReady();
+			}
+
+			if (eventName === 'playerMetadataChange') {
+				const rawTime = Number(data.currentTime);
+				const rawDuration = Number(data.duration);
+				if (nicoLengthSeconds > 0 && rawDuration > nicoLengthSeconds * 5) nicoTimeScale = 1000;
+				else if (nicoLengthSeconds > 0 && Math.abs(rawDuration - nicoLengthSeconds) < 2) nicoTimeScale = 1;
+				if (Number.isFinite(rawTime)) {
+					nicoCurrentMs = nicoTimeScale === 1000 ? rawTime : rawTime * 1000;
+				}
+				markNicoReady();
+			}
+		});
+
+		const from = time > 0 ? `&from=${Math.floor(time)}` : '';
+		videoIframe.src = `${nicoOrigin}/watch/${encodeURIComponent(videoId)}?jsapi=1&playerId=${encodeURIComponent(nicoPlayerId)}${from}`;
+		break;
+	}
 	case 'd':
 	{
 		let driveUser = 0;
