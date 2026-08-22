@@ -128,17 +128,61 @@ async function getWbiKeys() {
 	return wbiKeys;
 }
 
+const QN_LABELS = {
+	16: '360p',
+	32: '480p',
+	64: '720p',
+	80: '1080p',
+	112: '1080p+',
+	116: '1080p60',
+	120: '4K',
+};
+const ALLOWED_QN = Object.keys(QN_LABELS).map(Number);
+
+function parseQn(value) {
+	const qn = Number.parseInt(value, 10);
+	if (ALLOWED_QN.includes(qn)) return qn;
+	return 80;
+}
+
+function qualityList(data) {
+	const ids = data?.accept_quality || [];
+	const names = data?.accept_description || [];
+	const seen = new Set();
+	const list = [];
+	ids.forEach((id, index) => {
+		const qn = Number(id);
+		if (!ALLOWED_QN.includes(qn) || seen.has(qn)) return;
+		seen.add(qn);
+		list.push({
+			qn,
+			label: names[index] || QN_LABELS[qn] || String(qn),
+		});
+	});
+	if (!list.length) {
+		return ALLOWED_QN.slice(0, 4).map((qn) => ({ qn, label: QN_LABELS[qn] }));
+	}
+	return list.sort((a, b) => a.qn - b.qn);
+}
+
 function pickPlayUrl(data) {
 	const mp4 = data?.durl?.[0]?.url || data?.durl?.[0]?.backup_url?.[0];
-	if (mp4) return { url: mp4, kind: 'mp4' };
+	if (mp4) {
+		return {
+			url: mp4,
+			kind: 'mp4',
+			quality: Number(data.quality) || null,
+			qualities: qualityList(data),
+		};
+	}
 	return null;
 }
 
-async function requestPlayUrl(info) {
+async function requestPlayUrl(info, qn = 80) {
 	const baseParams = {
 		bvid: info.bvid,
 		cid: String(info.cid),
-		qn: '80',
+		qn: String(parseQn(qn)),
 		fnval: '0',
 		fnver: '0',
 		fourk: '1',
@@ -164,7 +208,7 @@ async function requestPlayUrl(info) {
 	}
 	const picked = pickPlayUrl(wbiJson.data);
 	if (picked) return picked;
-	throw apiError('This Bilibili video has no HTML5 MP4 stream. Download it and load the file instead.', 422);
+	throw apiError('This Bilibili video has no HTML5 MP4 stream.', 422);
 }
 
 async function resolveVideo({ bvid, aid, shortId, p }) {
@@ -211,8 +255,13 @@ async function resolveVideo({ bvid, aid, shortId, p }) {
 
 async function resolvePlayable(query) {
 	const info = await resolveVideo(query);
-	const play = await requestPlayUrl(info);
-	return { ...info, playUrl: play.url };
+	const play = await requestPlayUrl(info, query.qn);
+	return {
+		...info,
+		playUrl: play.url,
+		quality: play.quality,
+		qualities: play.qualities,
+	};
 }
 
 module.exports = {

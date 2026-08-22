@@ -24,6 +24,7 @@ function queryFromRequest(req) {
 		aid: req.query.aid,
 		shortId: req.query.short,
 		p: req.query.p,
+		qn: req.query.qn,
 	};
 }
 
@@ -38,8 +39,19 @@ app.get('/api/health', (_req, res) => {
 
 app.get('/api/bilibili/info', async (req, res) => {
 	try {
-		const info = await resolveVideo(queryFromRequest(req));
-		res.json(info);
+		const playable = await resolvePlayable(queryFromRequest(req));
+		res.json({
+			bvid: playable.bvid,
+			aid: playable.aid,
+			cid: playable.cid,
+			title: playable.title,
+			part: playable.part,
+			page: playable.page,
+			duration: playable.duration,
+			pageCount: playable.pageCount,
+			quality: playable.quality,
+			qualities: playable.qualities,
+		});
 	} catch (err) {
 		sendError(res, err);
 	}

@@ -451,6 +451,8 @@ switch (type) {
 	case 'b':
 	{
 		const videoPlayer = document.getElementById('video');
+		const qualityWrap = document.getElementById('bili-quality-wrap');
+		const qualitySelect = document.getElementById('bili-quality');
 		const page = searchParams.get('p') || '1';
 		const streamParams = new URLSearchParams({ p: page });
 		if (searchParams.get('short') === '1') streamParams.set('short', videoId);
@@ -478,6 +480,41 @@ switch (type) {
 			alert(message);
 		}
 
+		function loadBilibiliStream() {
+			videoPlayer.src = `/api/bilibili/stream?${streamParams}`;
+			videoPlayer.load();
+			getLocalVideoFps(videoPlayer);
+		}
+
+		function fillQualities(info) {
+			const qualities = info.qualities || [];
+			qualitySelect.innerHTML = '';
+			qualities.forEach((item) => {
+				const option = document.createElement('option');
+				option.value = String(item.qn);
+				option.textContent = item.label;
+				qualitySelect.appendChild(option);
+			});
+			const preferred = String(info.quality || localStorage.getItem('biliQn') || '');
+			if ([...qualitySelect.options].some((option) => option.value === preferred)) {
+				qualitySelect.value = preferred;
+			}
+			if (qualitySelect.value) streamParams.set('qn', qualitySelect.value);
+			qualityWrap.style.display = qualities.length ? 'inline' : 'none';
+		}
+
+		qualitySelect.onchange = () => {
+			streamParams.set('qn', qualitySelect.value);
+			localStorage.setItem('biliQn', qualitySelect.value);
+			const resumeAt = videoPlayer.currentTime || 0;
+			const restore = () => {
+				videoPlayer.currentTime = resumeAt;
+				videoPlayer.removeEventListener('loadedmetadata', restore);
+			};
+			videoPlayer.addEventListener('loadedmetadata', restore);
+			loadBilibiliStream();
+		};
+
 		videoIframe.remove();
 		videoPlayer.style.display = 'block';
 		bindHtml5Player();
@@ -493,9 +530,8 @@ switch (type) {
 					const body = await infoRes.json().catch(() => ({}));
 					throw new Error(body.error || `Server error ${infoRes.status}`);
 				}
-				videoPlayer.src = `/api/bilibili/stream?${streamParams}`;
-				videoPlayer.load();
-				getLocalVideoFps(videoPlayer);
+				fillQualities(await infoRes.json());
+				loadBilibiliStream();
 			} catch (err) {
 				if (err instanceof TypeError) {
 					showBilibiliError('Bilibili videos need the retimer server. Run npm start and open http://localhost:3000');
