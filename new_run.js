@@ -461,19 +461,37 @@ switch (type) {
 		else if (searchParams.get('aid') === '1') streamParams.set('aid', videoId);
 		else streamParams.set('bvid', videoId);
 
+		const audioPlayer = new Audio();
+		audioPlayer.preload = 'auto';
+		let qualitiesMeta = [];
+
+		function qualityHasAudio(qn) {
+			return !!qualitiesMeta.find((item) => String(item.qn) === String(qn))?.separateAudio;
+		}
+
+		function syncBiliAudio(force) {
+			if (!audioPlayer.getAttribute('src')) return;
+			const drift = Math.abs(audioPlayer.currentTime - videoPlayer.currentTime);
+			if (force || drift > 0.2) audioPlayer.currentTime = videoPlayer.currentTime;
+			audioPlayer.playbackRate = videoPlayer.playbackRate;
+		}
+
 		function bindHtml5Player() {
 			player = {
 				seekTo(timestamp) {
 					videoPlayer.currentTime = timestamp;
+					if (audioPlayer.getAttribute('src')) audioPlayer.currentTime = timestamp;
 				},
 				pauseVideo() {
 					videoPlayer.pause();
+					audioPlayer.pause();
 				},
 				getCurrentTime() {
 					return videoPlayer.currentTime;
 				},
 				playVideo() {
 					videoPlayer.play();
+					if (audioPlayer.getAttribute('src')) audioPlayer.play().catch(() => {});
 				},
 			};
 		}
@@ -490,30 +508,42 @@ switch (type) {
 			ignoreNextMediaError = true;
 			const restore = () => {
 				if (resume > 0.25) videoPlayer.currentTime = resume;
+				syncBiliAudio(true);
 				ignoreNextMediaError = false;
 				videoPlayer.removeEventListener('loadedmetadata', restore);
 			};
 			videoPlayer.addEventListener('loadedmetadata', restore);
 			videoPlayer.src = `/api/bilibili/stream?${streamParams}`;
 			videoPlayer.load();
+			if (qualityHasAudio(streamParams.get('qn'))) {
+				audioPlayer.src = `/api/bilibili/audio?${streamParams}`;
+				audioPlayer.load();
+			} else {
+				audioPlayer.pause();
+				audioPlayer.removeAttribute('src');
+				audioPlayer.load();
+			}
 			getLocalVideoFps(videoPlayer);
 		}
 
 		function fillQualities(info) {
-			const qualities = info.qualities || [];
+			qualitiesMeta = info.qualities || [];
 			qualitySelect.innerHTML = '';
-			qualities.forEach((item) => {
+			qualitiesMeta.forEach((item) => {
 				const option = document.createElement('option');
 				option.value = String(item.qn);
 				option.textContent = item.label;
 				qualitySelect.appendChild(option);
 			});
-			const preferred = String(info.quality || localStorage.getItem('biliQn') || '');
-			if ([...qualitySelect.options].some((option) => option.value === preferred)) {
-				qualitySelect.value = preferred;
-			}
+			const has = (qn) => [...qualitySelect.options].some((option) => option.value === String(qn));
+			const stored = localStorage.getItem('biliQn');
+			let preferred = '';
+			if (stored && has(stored)) preferred = stored;
+			else if (has('64')) preferred = '64';
+			else preferred = String(info.quality || '');
+			if (preferred && has(preferred)) qualitySelect.value = preferred;
 			if (qualitySelect.value) streamParams.set('qn', qualitySelect.value);
-			qualityWrap.style.display = qualities.length ? 'inline' : 'none';
+			qualityWrap.style.display = qualitiesMeta.length ? 'inline' : 'none';
 			if (info.fps && !userChoseFps) {
 				framerateElement.value = info.fps;
 				validateFramerate();
@@ -531,9 +561,23 @@ switch (type) {
 		videoPlayer.style.display = 'block';
 		bindHtml5Player();
 		videoPlayer.addEventListener('loadedmetadata', onPlayerReady, { once: true });
+		videoPlayer.addEventListener('play', () => {
+			if (audioPlayer.getAttribute('src')) {
+				syncBiliAudio(true);
+				audioPlayer.play().catch(() => {});
+			}
+		});
+		videoPlayer.addEventListener('pause', () => audioPlayer.pause());
+		videoPlayer.addEventListener('seeked', () => syncBiliAudio(true));
+		videoPlayer.addEventListener('waiting', () => audioPlayer.pause());
+		videoPlayer.addEventListener('ratechange', () => {
+			audioPlayer.playbackRate = videoPlayer.playbackRate;
+		});
+		videoPlayer.addEventListener('timeupdate', () => syncBiliAudio(false));
 		videoPlayer.addEventListener('playing', () => {
 			streamReloads = 0;
 			ignoreNextMediaError = false;
+			if (audioPlayer.getAttribute('src')) audioPlayer.play().catch(() => {});
 		});
 		videoPlayer.addEventListener('error', () => {
 			const code = videoPlayer.error?.code;

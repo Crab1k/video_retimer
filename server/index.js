@@ -52,29 +52,40 @@ app.get('/api/bilibili/info', async (req, res) => {
 			quality: playable.quality,
 			qualities: playable.qualities,
 			fps: playable.fps,
+			separateAudio: playable.separateAudio,
 		});
 	} catch (err) {
 		sendError(res, err);
 	}
 });
 
-async function fetchBilibiliCdn(playable, rangeHeader) {
+async function fetchBilibiliCdn(playable, url, rangeHeader) {
 	const headers = biliHeaders({
 		Referer: `https://www.bilibili.com/video/${playable.bvid}`,
 	});
 	if (rangeHeader) headers.Range = rangeHeader;
-	return fetch(playable.playUrl, { headers });
+	return fetch(url, { headers });
 }
 
-async function proxyBilibili(req, res) {
+async function proxyBilibili(req, res, pickUrl) {
 	try {
 		const query = queryFromRequest(req);
 		let playable = await resolvePlayable(query);
-		let upstream = await fetchBilibiliCdn(playable, req.headers.range);
+		let url = pickUrl(playable);
+		if (!url) {
+			res.status(204).end();
+			return;
+		}
+		let upstream = await fetchBilibiliCdn(playable, url, req.headers.range);
 		if (upstream.status === 403 || upstream.status === 404) {
 			invalidatePlayable(query);
 			playable = await resolvePlayable(query, { refresh: true });
-			upstream = await fetchBilibiliCdn(playable, req.headers.range);
+			url = pickUrl(playable);
+			if (!url) {
+				res.status(204).end();
+				return;
+			}
+			upstream = await fetchBilibiliCdn(playable, url, req.headers.range);
 		}
 		if (!upstream.ok && upstream.status !== 206) {
 			res.status(502).json({ error: 'Bilibili CDN refused the video stream' });
@@ -111,8 +122,13 @@ async function proxyBilibili(req, res) {
 	}
 }
 
-app.get('/api/bilibili/stream', proxyBilibili);
-app.head('/api/bilibili/stream', proxyBilibili);
+const proxyVideo = (req, res) => proxyBilibili(req, res, (playable) => playable.playUrl);
+const proxyAudio = (req, res) => proxyBilibili(req, res, (playable) => playable.audioUrl);
+
+app.get('/api/bilibili/stream', proxyVideo);
+app.head('/api/bilibili/stream', proxyVideo);
+app.get('/api/bilibili/audio', proxyAudio);
+app.head('/api/bilibili/audio', proxyAudio);
 
 app.get(['/', '/index.html'], sendHome);
 app.use(express.static(root, { index: 'index.html' }));
