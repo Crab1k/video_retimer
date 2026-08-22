@@ -27,6 +27,11 @@ function queryFromRequest(req) {
 	};
 }
 
+app.use((_req, res, next) => {
+	res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+	next();
+});
+
 app.get('/api/health', (_req, res) => {
 	res.json({ ok: true });
 });

@@ -4,6 +4,7 @@
 <head>
 	<meta charset="utf-8">
 	<meta name="viewport" content="width=device-width">
+	<meta name="referrer" content="strict-origin-when-cross-origin">
 	<title>Better Speedrun Timer</title>
 	<script src="https://player.twitch.tv/js/embed/v1.js" defer></script>
 	<link rel="stylesheet" href="modes.css">
@@ -51,7 +52,7 @@
 <body>
 	<div class="global-container">
 		<div class="normal">
-			<button onclick="window.location.href = '/';" id="backtohome">Back to Home</button>
+			<button onclick="window.location.href = window.location.origin + '/';" id="backtohome">Back to Home</button>
 			<button onclick="window.open('https://github.com/NoobJsPerson/better-speedrun-retimer','_blank').focus();"
 				id="sourcecodebutton">Source Code</button>
 		</div>
@@ -73,7 +74,9 @@
 		</div>
 		<div class="for-player">
 			<div id="video-div"></div>
-			<iframe id="video-iframe" allowfullscreen></iframe>
+			<iframe id="video-iframe" allowfullscreen
+				referrerpolicy="strict-origin-when-cross-origin"
+				allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"></iframe>
 			<video id="video" controls style="display: none;"></video>
 			<div class="normal">
 				<label for="framerate" id="fra" class="bold">Framerate: </label>
