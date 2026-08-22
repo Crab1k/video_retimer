@@ -38,7 +38,7 @@ function parseDriveId(videoUrl) {
 
 function redirectYoutube(url) {
 	const [id, t] = parseYoutubeId(url);
-	if (id) window.location.href = `new_run.html?id=${id}&type=y${t ? `&t=${t}` : ''}`;
+	if (id) window.location.href = `/new_run.html?id=${id}&type=y${t ? `&t=${t}` : ''}`;
 }
 
 function redirectTwitch() {
@@ -50,12 +50,12 @@ function redirectTwitch() {
 		else if (timeArr.length === 2) t = parseInt(timeArr[0]) * 60 + parseInt(timeArr[1]);
 		else if (timeArr.length === 1) t = parseInt(timeArr[0]);
 	}
-	if (id) window.location.href = `new_run.html?id=${id}&type=t${t ? `&t=${t}` : ''}`;
+	if (id) window.location.href = `/new_run.html?id=${id}&type=t${t ? `&t=${t}` : ''}`;
 }
 
 function redirectDrive(url) {
 	const id = parseDriveId(url);
-	if (id) window.location.href = `new_run.html?id=${id}&type=d`;
+	if (id) window.location.href = `/new_run.html?id=${id}&type=d`;
 }
 
 function withProtocol(rawUrl) {
@@ -114,7 +114,7 @@ function redirectBilibili(url) {
 	}
 	if (parsed.p && parsed.p !== '1') params.set('p', parsed.p);
 	if (parsed.t) params.set('t', parsed.t);
-	window.location.href = `new_run.html?${params}`;
+	window.location.href = `/new_run.html?${params}`;
 }
 
 function redirect() {

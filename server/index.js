@@ -1,11 +1,17 @@
+const fs = require('node:fs');
 const path = require('node:path');
 const { Readable } = require('node:stream');
 const express = require('express');
 const { biliHeaders, resolvePlayable, resolveVideo } = require('./bilibili');
 
 const app = express();
-const root = path.join(__dirname, '..');
+const root = path.resolve(__dirname, '..');
+const indexFile = path.join(root, 'index.html');
 const PORT = process.env.PORT || 3000;
+
+function sendHome(_req, res) {
+	res.sendFile(indexFile);
+}
 
 function sendError(res, err) {
 	const status = err.status || 500;
@@ -81,8 +87,22 @@ async function proxyBilibili(req, res) {
 app.get('/api/bilibili/stream', proxyBilibili);
 app.head('/api/bilibili/stream', proxyBilibili);
 
-app.use(express.static(root));
+app.get(['/', '/index.html'], sendHome);
+app.use(express.static(root, { index: 'index.html' }));
+app.get('*', (req, res, next) => {
+	if (req.method !== 'GET' || req.path.startsWith('/api/')) {
+		next();
+		return;
+	}
+	const accept = req.headers.accept || '';
+	if (!accept.includes('text/html')) {
+		next();
+		return;
+	}
+	sendHome(req, res);
+});
 
 app.listen(PORT, () => {
 	console.log(`Retimer server running at http://localhost:${PORT}`);
+	console.log(`Static root: ${root} (index.html ${fs.existsSync(indexFile) ? 'found' : 'MISSING'})`);
 });
