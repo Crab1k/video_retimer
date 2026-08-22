@@ -163,8 +163,10 @@ function stepBy(amount) {
 	setTime(Math.ceil(((currentFrame + amount) / framerate) * 1000) / 1000);
 }
 
+let fpsDetectGeneration = 0;
 function getLocalVideoFps(videoPlayer) {
 	// https://stackoverflow.com/a/73094937/19702779
+	const generation = ++fpsDetectGeneration;
 	let lastMediaTimer;
 	let lastFrameNum;
 	let fps;
@@ -174,6 +176,7 @@ function getLocalVideoFps(videoPlayer) {
 		return fpsRounder.reduce((a, b) => a + b) / fpsRounder.length;
 	}
 	function ticker(_now, metadata) {
+		if (generation !== fpsDetectGeneration || userChoseFps) return;
 		const mediaTimeDiff = Math.abs(metadata.mediaTime - lastMediaTimer);
 		const frameNumDiff = Math.abs(metadata.presentedFrames - lastFrameNum);
 		const diff = mediaTimeDiff / frameNumDiff;
@@ -181,14 +184,13 @@ function getLocalVideoFps(videoPlayer) {
 			diff
 			&& diff < 1
 			&& frameNotSeeked
-			&& fpsRounder.length < 50
+			&& fpsRounder.length < 20
 			&& videoPlayer.playbackRate === 1
-			&& document.hasFocus()
 		) {
 			fpsRounder.push(diff);
 			fps = Math.round(1 / getFpsAverage());
-			console.log(`FPS: ${fps}, certainty: ${fpsRounder.length * 2}%`);
-			if (fpsRounder.length === 50) {
+			console.log(`FPS: ${fps}, certainty: ${fpsRounder.length * 5}%`);
+			if (fpsRounder.length === 20) {
 				framerate = fps;
 				validateFramerate();
 				return;
@@ -200,8 +202,8 @@ function getLocalVideoFps(videoPlayer) {
 		videoPlayer.requestVideoFrameCallback(ticker);
 	}
 	if ('requestVideoFrameCallback' in videoPlayer) videoPlayer.requestVideoFrameCallback(ticker);
-	else alert("Couldn't auto detect framerate because 'requestVideoFrameCallback' is unsupported. Please get the framerate manually and put it in the framerate input!");
 	videoPlayer.addEventListener('seeked', () => {
+		if (generation !== fpsDetectGeneration) return;
 		fpsRounder.pop();
 		frameNotSeeked = false;
 	});
@@ -501,6 +503,10 @@ switch (type) {
 			}
 			if (qualitySelect.value) streamParams.set('qn', qualitySelect.value);
 			qualityWrap.style.display = qualities.length ? 'inline' : 'none';
+			if (info.fps && !userChoseFps) {
+				framerateElement.value = info.fps;
+				validateFramerate();
+			}
 		}
 
 		qualitySelect.onchange = () => {

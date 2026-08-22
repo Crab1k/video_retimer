@@ -51,6 +51,7 @@ app.get('/api/bilibili/info', async (req, res) => {
 			pageCount: playable.pageCount,
 			quality: playable.quality,
 			qualities: playable.qualities,
+			fps: playable.fps,
 		});
 	} catch (err) {
 		sendError(res, err);

@@ -165,7 +165,15 @@ function qualityList(data) {
 	return list.sort((a, b) => a.qn - b.qn);
 }
 
-function pickPlayUrl(data) {
+function inferFps(data, qn) {
+	const dashFps = Number(data?.dash?.video?.[0]?.frameRate);
+	if (dashFps > 0) return Math.round(dashFps);
+	const current = Number(data?.quality) || Number(qn);
+	if (current === 74 || current === 116) return 60;
+	return null;
+}
+
+function pickPlayUrl(data, qn) {
 	const mp4 = data?.durl?.[0]?.url || data?.durl?.[0]?.backup_url?.[0];
 	if (mp4) {
 		return {
@@ -173,6 +181,7 @@ function pickPlayUrl(data) {
 			kind: 'mp4',
 			quality: Number(data.quality) || null,
 			qualities: qualityList(data),
+			fps: inferFps(data, qn),
 		};
 	}
 	return null;
@@ -194,7 +203,7 @@ async function requestPlayUrl(info, qn = 80) {
 	const html5Res = await biliFetch(`${PLAYURL_HTML5}?${html5Query}`);
 	if (html5Res.ok) {
 		const html5Json = await html5Res.json();
-		const picked = pickPlayUrl(html5Json?.data);
+		const picked = pickPlayUrl(html5Json?.data, qn);
 		if (picked) return picked;
 	}
 
@@ -206,7 +215,7 @@ async function requestPlayUrl(info, qn = 80) {
 	if (wbiJson.code !== 0) {
 		throw apiError(wbiJson.message || 'Bilibili refused playback', 502);
 	}
-	const picked = pickPlayUrl(wbiJson.data);
+	const picked = pickPlayUrl(wbiJson.data, qn);
 	if (picked) return picked;
 	throw apiError('This Bilibili video has no HTML5 MP4 stream.', 422);
 }
@@ -261,6 +270,7 @@ async function resolvePlayable(query) {
 		playUrl: play.url,
 		quality: play.quality,
 		qualities: play.qualities,
+		fps: play.fps,
 	};
 }
 
