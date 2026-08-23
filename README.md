@@ -1,6 +1,6 @@
 # Video Retimer+
 
-A small and accurate mobile friendly speedrun retiming website.
+A small and accurate mobile friendly video retiming website.
 
 This project is based on [better-speedrun-retimer](https://github.com/NoobJsPerson/better-speedrun-retimer) by [NoobJsPerson](https://github.com/NoobJsPerson) (`AmineCrafter101`). Thanks for the original retimer that this site is built from.
 
