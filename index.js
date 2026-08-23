@@ -1,6 +1,9 @@
 /* eslint-disable max-len */
 /* eslint-disable no-unused-vars */
 const inputUrl = document.getElementById('url');
+const loadForm = document.getElementById('load-form');
+const platformChip = document.getElementById('platform-chip');
+const urlError = document.getElementById('urlerror');
 const ytRegex = /youtu(?:be\..+?|.be)\/(?:watch.*?v=|embed\/|shorts\/|)([A-Za-z0-9_-]+).*?((?<=(?:\?|&)t=))*(\d+)*/;
 const twitchRegex = /twitch\.tv\/videos\/(\d+)(?:\?t=)?(.+)?/;
 const driveRegex = /drive\.google\.com\/file\/d\/(.*)\//;
@@ -10,7 +13,7 @@ const biliShortRegex = /(?:b23\.tv|bili2233\.cn)\/([A-Za-z0-9]+)/i;
 
 inputUrl.focus();
 
-const select = document.getElementsByTagName('select')[0];
+const select = document.getElementById('langselect');
 select.value = localStorage.getItem('LA') || 'EN';
 select.onchange = (event) => {
 	localStorage.setItem('LA', event.target.value);
@@ -157,14 +160,51 @@ function redirectBilibili(url) {
 	window.location.href = `/new_run.html?${params}`;
 }
 
-function redirect() {
-	const url = inputUrl.value;
+function detectPlatform(url) {
+	if (parseYoutubeId(url)[0]) return 'YouTube';
+	if (parseTwitchId(url)[0]) return 'Twitch';
+	if (parseDriveId(url)) return 'Drive';
+	if (parseBilibili(url)) return 'Bilibili';
+	if (parseNiconico(url)) return 'Niconico';
+	return null;
+}
+
+function setUrlError(visible) {
+	urlError.classList.toggle('visible', visible);
+	if (visible) platformChip.classList.remove('visible');
+}
+
+function updatePlatformChip() {
+	const platform = detectPlatform(inputUrl.value);
+	if (platform) {
+		platformChip.textContent = platform;
+		platformChip.classList.add('visible');
+		urlError.classList.remove('visible');
+		return;
+	}
+	platformChip.classList.remove('visible');
+	platformChip.textContent = '';
+}
+
+function redirect(event) {
+	if (event) event.preventDefault();
+	const url = inputUrl.value.trim();
+	inputUrl.value = url;
+	if (!detectPlatform(url)) {
+		setUrlError(true);
+		inputUrl.focus();
+		return;
+	}
+	setUrlError(false);
 	redirectYoutube(url);
 	redirectTwitch(url);
 	redirectDrive(url);
 	redirectBilibili(url);
 	redirectNiconico(url);
 }
+
+inputUrl.addEventListener('input', updatePlatformChip);
+loadForm.addEventListener('submit', redirect);
 
 if ('serviceWorker' in navigator) {
 	window.addEventListener('load', () => {
