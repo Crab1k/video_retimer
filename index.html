@@ -69,6 +69,22 @@
 			box-sizing: border-box;
 		}
 
+		.home-terms {
+			margin: 8px 0 0;
+			font-size: 12px;
+			line-height: 1.4;
+		}
+
+		.home-terms a {
+			color: inherit;
+			opacity: 0.5;
+			text-decoration: underline;
+		}
+
+		.home-terms a:hover {
+			opacity: 0.85;
+		}
+
 		.home-meta {
 			display: flex;
 			align-items: center;
@@ -166,6 +182,9 @@
 					<button type="submit" id="loadbutton">Load</button>
 				</div>
 			</form>
+			<p class="home-terms">
+				<a href="/terms.html" id="termslink">Terms of Use</a>
+			</p>
 			<div class="home-meta">
 				<span id="platform-chip"></span>
 				<p id="urlerror">Couldn't recognize this link.</p>
