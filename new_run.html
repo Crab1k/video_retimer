@@ -48,6 +48,26 @@
 				border-radius: 0;
 			}
 		}
+
+		#screamer {
+			position: fixed;
+			inset: 0;
+			z-index: 2147483647;
+			background: #000;
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			cursor: pointer;
+		}
+
+		#screamer[hidden] {
+			display: none !important;
+		}
+
+		#screamer svg {
+			width: min(90vw, 90vh);
+			height: min(90vw, 90vh);
+		}
 	</style>
 </head>
 
@@ -165,6 +185,18 @@
 			<button id="modMessageButton" onclick="copyModMessage()" disabled>Copy Mod Message to Clipboard</button>
 			<br><br>
 		</div>
+	</div>
+	<div id="screamer" hidden>
+		<svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+			<rect width="200" height="200" fill="#100" />
+			<ellipse cx="70" cy="78" rx="22" ry="28" fill="#fff" />
+			<ellipse cx="130" cy="78" rx="22" ry="28" fill="#fff" />
+			<ellipse cx="74" cy="84" rx="8" ry="16" fill="#200" />
+			<ellipse cx="126" cy="84" rx="8" ry="16" fill="#200" />
+			<path d="M40 140 Q100 190 160 140 Q100 175 40 140Z" fill="#fff" />
+			<path d="M55 145 Q100 168 145 145" fill="none" stroke="#200" stroke-width="3" />
+		</svg>
+	</div>
 </body>
 
 </html>

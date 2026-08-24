@@ -161,6 +161,70 @@ function stepBy(amount) {
 	player.pauseVideo();
 	updateCurrentTime();
 	setTime(Math.ceil(((currentFrame + amount) / framerate) * 1000) / 1000);
+	armScreamer(amount);
+}
+
+let screamerEnabled = false;
+let screamerArmed = false;
+fetch('/api/screamer')
+	.then((res) => res.json())
+	.then((data) => {
+		screamerEnabled = data.enabled === true;
+	})
+	.catch(() => {});
+
+function playScreamSound() {
+	const AudioCtx = window.AudioContext || window.webkitAudioContext;
+	if (!AudioCtx) return;
+	const ctx = new AudioCtx();
+	const duration = 1.3;
+	const now = ctx.currentTime;
+	const gain = ctx.createGain();
+	gain.gain.setValueAtTime(0.0001, now);
+	gain.gain.exponentialRampToValueAtTime(0.4, now + 0.03);
+	gain.gain.exponentialRampToValueAtTime(0.0001, now + duration);
+	gain.connect(ctx.destination);
+
+	const osc = ctx.createOscillator();
+	osc.type = 'sawtooth';
+	osc.frequency.setValueAtTime(380, now);
+	osc.frequency.exponentialRampToValueAtTime(1600, now + 0.12);
+	osc.frequency.exponentialRampToValueAtTime(220, now + duration);
+	osc.connect(gain);
+	osc.start(now);
+	osc.stop(now + duration);
+
+	const noiseBuffer = ctx.createBuffer(1, Math.floor(ctx.sampleRate * duration), ctx.sampleRate);
+	const samples = noiseBuffer.getChannelData(0);
+	for (let i = 0; i < samples.length; i++) samples[i] = Math.random() * 2 - 1;
+	const noise = ctx.createBufferSource();
+	noise.buffer = noiseBuffer;
+	const noiseGain = ctx.createGain();
+	noiseGain.gain.setValueAtTime(0.25, now);
+	noiseGain.gain.exponentialRampToValueAtTime(0.0001, now + duration);
+	noise.connect(noiseGain);
+	noiseGain.connect(ctx.destination);
+	noise.start(now);
+	noise.stop(now + duration);
+}
+
+function playScreamer() {
+	const overlay = document.getElementById('screamer');
+	if (!overlay) return;
+	overlay.hidden = false;
+	playScreamSound();
+	overlay.onclick = () => {
+		overlay.hidden = true;
+	};
+}
+
+function armScreamer(amount) {
+	if (!screamerEnabled || screamerArmed) return;
+	if (amount !== 1 && amount !== -1) return;
+	const onlyOneBound = (start === null) !== (end === null);
+	if (!onlyOneBound) return;
+	screamerArmed = true;
+	setTimeout(playScreamer, 1000);
 }
 
 let fpsDetectGeneration = 0;

@@ -37,6 +37,11 @@ app.get('/api/health', (_req, res) => {
 	res.json({ ok: true });
 });
 
+app.get('/api/screamer', (_req, res) => {
+	res.setHeader('cache-control', 'no-store');
+	res.json({ enabled: process.env.SCREAMER_ENABLED === '1' });
+});
+
 app.get('/api/bilibili/info', async (req, res) => {
 	try {
 		const playable = await resolvePlayable(queryFromRequest(req));
