@@ -210,7 +210,17 @@ function playScreamSound() {
 
 function playScreamer() {
 	const overlay = document.getElementById('screamer');
+	const img = document.getElementById('screamer-img');
+	const fallback = document.getElementById('screamer-fallback');
 	if (!overlay) return;
+	if (img && fallback) {
+		img.hidden = false;
+		fallback.hidden = true;
+		img.onerror = () => {
+			img.hidden = true;
+			fallback.hidden = false;
+		};
+	}
 	overlay.hidden = false;
 	playScreamSound();
 	setTimeout(() => {

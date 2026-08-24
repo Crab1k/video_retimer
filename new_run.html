@@ -63,6 +63,15 @@
 			display: none !important;
 		}
 
+		#screamer img {
+			width: 100vw;
+			height: 100vh;
+			max-width: 2560px;
+			max-height: 1440px;
+			object-fit: cover;
+			object-position: center;
+		}
+
 		#screamer svg {
 			width: min(100vw, 100vh);
 			height: min(100vw, 100vh);
@@ -186,7 +195,9 @@
 		</div>
 	</div>
 	<div id="screamer" hidden>
-		<svg viewBox="0 0 200 240" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+		<img id="screamer-img" src="/screamer.png" alt="" width="2560" height="1440"
+			onerror="this.hidden=true;document.getElementById('screamer-fallback').hidden=false">
+		<svg id="screamer-fallback" viewBox="0 0 200 240" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" hidden>
 			<rect width="200" height="240" fill="#0a0a0a" />
 			<ellipse cx="100" cy="118" rx="72" ry="86" fill="#c8c2b4" />
 			<ellipse cx="62" cy="108" rx="28" ry="32" fill="#f4f0e6" />
