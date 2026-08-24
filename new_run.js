@@ -173,7 +173,7 @@ fetch('/api/screamer')
 	})
 	.catch(() => {});
 
-function playScreamSound() {
+function playScreamSoundFallback() {
 	const AudioCtx = window.AudioContext || window.webkitAudioContext;
 	if (!AudioCtx) return;
 	const ctx = new AudioCtx();
@@ -208,6 +208,37 @@ function playScreamSound() {
 	noise.stop(now + duration);
 }
 
+function playScreamSound() {
+	const el = document.getElementById('screamer-audio');
+	if (!el) {
+		playScreamSoundFallback();
+		return;
+	}
+	let usedFallback = false;
+	const fail = () => {
+		if (usedFallback) return;
+		usedFallback = true;
+		playScreamSoundFallback();
+	};
+	el.addEventListener('error', fail, { once: true });
+	try {
+		el.currentTime = 0;
+	} catch (_) {}
+	const played = el.play();
+	if (played && typeof played.catch === 'function') {
+		played.catch(fail);
+	}
+}
+
+function stopScreamSound() {
+	const el = document.getElementById('screamer-audio');
+	if (!el) return;
+	el.pause();
+	try {
+		el.currentTime = 0;
+	} catch (_) {}
+}
+
 function playScreamer() {
 	const overlay = document.getElementById('screamer');
 	const img = document.getElementById('screamer-img');
@@ -225,6 +256,7 @@ function playScreamer() {
 	playScreamSound();
 	setTimeout(() => {
 		overlay.hidden = true;
+		stopScreamSound();
 	}, 10000);
 }
 
