@@ -213,9 +213,9 @@ function playScreamer() {
 	if (!overlay) return;
 	overlay.hidden = false;
 	playScreamSound();
-	overlay.onclick = () => {
+	setTimeout(() => {
 		overlay.hidden = true;
-	};
+	}, 10000);
 }
 
 function armScreamer(amount) {
