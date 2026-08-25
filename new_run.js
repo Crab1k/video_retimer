@@ -261,6 +261,7 @@ function playScreamer() {
 }
 
 function armScreamer(amount) {
+	if (type !== 'n') return;
 	if (!screamerEnabled || screamerArmed) return;
 	if (amount !== 1 && amount !== -1) return;
 	const onlyOneBound = (start === null) !== (end === null);
